@@ -1,0 +1,85 @@
+---
+title: "Assignment 03 Getting and Cleaning Data"
+author: "Qingyuan Li"
+date: "2022-10-02"
+output: word_document
+theme: 
+  bootswatch: Flatly
+---
+Step1: Limit the dataframe to the specified columns
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse')
+library('dplyr')
+data<- read.csv(file = 'StormEvents_details-ftp_v1.0_d1997_c20220425.csv')
+data1<-select(data,BEGIN_DATE_TIME,END_DATE_TIME,BEGIN_YEARMONTH,EPISODE_ID,EVENT_ID,STATE,STATE_FIPS,CZ_NAME,CZ_TYPE,CZ_FIPS,EVENT_TYPE,SOURCE,BEGIN_LAT,BEGIN_LON,END_LAT,END_LON)
+```
+
+
+Step2: Arrange the data by beginning year and month (BEGIN_YEARMONTH)
+
+```{r, include=FALSE}
+data2<-arrange(data1,BEGIN_YEARMONTH)
+```
+
+
+Step3: Change state and county names to title case (e.g., “New Jersey” instead of “NEW JERSEY”)
+
+```{r, include=FALSE}
+library('stringr')
+str_to_title()
+data2$STATE<-str_to_title(data2$STATE)
+data2$CZ_NAME<-str_to_title(data2$CZ_NAME)
+```
+
+
+Step4: Limit to the events listed by county FIPS (CZ_TYPE of “C”) and then remove the CZ_TYPE column (5 points)
+
+```{r,include=FALSE}
+data3<-filter(data2,CZ_TYPE=="C")#select
+data4<-subset(data3,select=-CZ_TYPE)#delete
+```
+Step5: Pad the state and county FIPS with a “0” at the beginning (hint: there’s a function in stringr to do this) and then unite the two columns to make one fips column with the 5 or 6-digit county FIPS code (5 points) 
+
+```{r,include=FALSE}
+statefipsnew<-as.character(data4$STATE_FIPS)#transfer to character type - state
+data4$STATE_FIPS<-statefipsnew#update
+data4$CZ_FIPS<-as.character(data4$CZ_FIPS)#transfer to character type - county
+data4$STATE_FIPS<-str_pad(data4$STATE_FIPS,side='left',pad='0',width = 3)#padding - state
+data4$CZ_FIPS<-str_pad(data4$CZ_FIPS,side='left',pad='0',width = 3)#padding - county
+data5<-unite(data4,'fips2',STATE_FIPS,CZ_FIPS,sep='',remove=FALSE)#unite
+data5$fips2<-as.integer(data5$fips2)#transfer to integer
+```
+Step6: Change all the column names to lower case (you may want to try the rename_all function for this) (5 points) 
+```{r,include=FALSE}
+data6<-rename_all(data5,str_to_lower)
+```
+
+Step7:	There is data that comes with base R on U.S. states (data("state")). Use that to create a dataframe with these three columns: state name, area, and region (5 points)
+
+```{r,include=FALSE}
+data('state')#load
+states<-data.frame(state.name,state.area,state.region)#create dataframe
+```
+
+Step8: Create a dataframe with the number of events per state in the year of your birth. Merge in the state information dataframe you just created in step 8. Remove any states that are not in the state information dataframe. (5 points) 
+
+```{r,include=FALSE}
+
+Newset<- data.frame(table(data6$state))#frequency table
+merged <- merge(x=Newset,y=states,by.x="Var1", by.y="state.name")#merge state info
+merged %>% 
+  drop_na(c("state.area", "state.region"))#remove states not in the state info dataframe
+merged1<-rename(merged, c("state"="Var1"))#rename
+
+merged1
+
+
+```
+Step9: Create the following plot (10 points)
+```{r,include=FALSE}
+library(ggplot2)
+storm_plot<- ggplot(merged1, aes(x=state.area,y=Freq))+geom_point(aes(color=state.region))+labs(x='Land area (square miles)',y='# of storm events in 1997')
+storm_plot
+```
